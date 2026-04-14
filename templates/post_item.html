@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="form-card">
+    <h2>Post Lost / Found Item</h2>
+    <form method="post" action="{{ url_for('items.post_item') }}" enctype="multipart/form-data">
+        <label>Title</label>
+        <input type="text" name="title" required />
+
+        <label>Description</label>
+        <textarea name="description" rows="4" placeholder="Describe the item clearly (minimum 20 characters if no image)." required></textarea>
+
+        <label>Category</label>
+        <select name="category" id="category" required>
+            {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="split-row">
+            <div>
+                <label>Location</label>
+                <input type="text" name="location" required />
+            </div>
+            <div>
+                <label>Date</label>
+                <input type="date" name="date" />
+            </div>
+        </div>
+
+        <div class="split-row">
+            <div>
+                <label>Color</label>
+                <input type="text" name="color" />
+            </div>
+            <div id="brand-field">
+                <label>Brand</label>
+                <input type="text" name="brand" />
+            </div>
+        </div>
+
+        <label>Type</label>
+        <select name="type" id="item-type" required>
+            {% for item_type in types %}
+                <option value="{{ item_type }}">{{ item_type.title() }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Image Upload</label>
+        <input type="file" name="image" accept="image/png, image/jpeg" />
+
+        <button type="submit" class="button-primary">Submit Item</button>
+    </form>
+</div>
+<script>
+    const categorySelect = document.getElementById('category');
+    const brandField = document.getElementById('brand-field');
+    const brandInput = brandField ? brandField.querySelector('input[name="brand"]') : null;
+
+    function syncBrandVisibility() {
+        if (!categorySelect || !brandField) return;
+        const isIdCard = categorySelect.value === 'ID Card';
+        brandField.style.display = isIdCard ? 'none' : '';
+        if (isIdCard && brandInput) {
+            brandInput.value = '';
+        }
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', syncBrandVisibility);
+        syncBrandVisibility();
+    }
+</script>
+{% endblock %}

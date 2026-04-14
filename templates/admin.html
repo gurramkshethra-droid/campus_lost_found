@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Admin Panel</h1>
+        <p>Manage users, items, and smart matches across the system.</p>
+    </div>
+</div>
+
+<section class="admin-section">
+    <h2>Active Users</h2>
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>{{ user.name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.role.title() }}</td>
+                        <td>
+                            {% if user.role != 'admin' %}
+                                <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}">
+                                    <button class="button-secondary" type="submit">Delete</button>
+                                </form>
+                            {% else %}
+                                <span class="tag admin">Admin</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="admin-section">
+    <h2>All Items</h2>
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Posted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td>{{ item.title }}</td>
+                        <td>{{ item.type.title() }}</td>
+                        <td>{{ item.owner.email }}</td>
+                        <td>{{ item.status.title() }}</td>
+                        <td>{{ item.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.delete_item', item_id=item.id) }}">
+                                <button class="button-secondary" type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="admin-section">
+    <h2>Possible Matches</h2>
+    <div class="match-grid">
+        {% for match in matches %}
+            <div class="match-card">
+                <p><strong>Lost Item:</strong> {{ match.lost_item.title }}</p>
+                <p><strong>Found Item:</strong> {{ match.found_item.title }}</p>
+                <p><strong>Score:</strong> {{ match.match_score }}</p>
+            </div>
+        {% else %}
+            <p class="empty-state">No matches found yet.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

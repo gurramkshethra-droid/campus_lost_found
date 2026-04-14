@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Campus Lost & Found</h1>
+        <p>Discover lost items, report found belongings, and connect with owners across campus.</p>
+    </div>
+
+    <form class="search-form" method="get" action="{{ url_for('items.dashboard') }}">
+        <input type="text" name="query" placeholder="Search items..." value="{{ query }}" />
+
+        <select name="type">
+            <option value="">All Types</option>
+            <option value="lost" {% if selected_type == 'lost' %}selected{% endif %}>Lost</option>
+            <option value="found" {% if selected_type == 'found' %}selected{% endif %}>Found</option>
+        </select>
+
+        <select name="category">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+                <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Filter</button>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <p class="meta">Total Lost Items</p>
+        <h3>{{ total_lost }}</h3>
+    </div>
+    <div class="stat-card">
+        <p class="meta">Total Found Items</p>
+        <h3>{{ total_found }}</h3>
+    </div>
+    <div class="stat-card">
+        <p class="meta">Resolved</p>
+        <h3>{{ resolved_count }}</h3>
+    </div>
+</div>
+
+{% if matches %}
+<div class="alert alert-info">
+    You have possible matches for your item(s). Visit the admin panel or check item details.
+</div>
+{% endif %}
+
+<div class="card-grid">
+    {% for item in items %}
+        <div class="card">
+            <div class="card-image">
+                {% if item.image %}
+                    <img src="{{ url_for('static', filename='uploads/' ~ item.image) }}" alt="{{ item.title }}" />
+                {% else %}
+                    <div class="placeholder">No Image</div>
+                {% endif %}
+            </div>
+
+            <div class="card-content">
+                <div class="card-top">
+                    
+                    {% if item.type == 'found' %}
+                        <h3>Found Item (Details Hidden)</h3>
+                    {% else %}
+                        <h3>{{ item.title }}</h3>
+                    {% endif %}
+
+                    <span class="tag {{ item.type }}">{{ item.type.title() }}</span>
+                </div>
+
+                <p class="meta">Category: {{ item.category }} • Location: {{ item.location }}</p>
+
+                {% if item.type == 'found' %}
+                    <p>Details hidden for security</p>
+                {% else %}
+                    <p>{{ item.description or 'No description provided.' }}</p>
+                {% endif %}
+
+                <p class="meta">
+                    Status:
+                    {% if item.status == 'claimed' %}
+                        <span class="status-badge status-claimed">🔵 Claimed</span>
+                    {% elif item.status == 'closed' %}
+                        <span class="status-badge status-closed">🔴 Closed</span>
+                    {% else %}
+                        <span class="status-badge status-active">🟢 Active</span>
+                    {% endif %}
+                </p>
+
+                <div class="card-actions">
+                    <a class="button-outline" href="{{ url_for('items.item_detail', item_id=item.id) }}">View</a>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <p class="empty-state">No items match your search. Try removing filters or posting a new item.</p>
+    {% endfor %}
+</div>
+{% endblock %}

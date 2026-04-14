@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="detail-card">
+    <div class="detail-header">
+        <div>
+            <h2>
+                {% if item.type == 'found' and current_user.id != item.owner.id %}
+                    Found Item (Details Hidden)
+                {% else %}
+                    {{ item.title }}
+                {% endif %}
+            </h2>
+            <p class="meta">{{ item.category }} • {{ item.type.title() }} • {{ item.location }}</p>
+        </div>
+        <span class="tag {{ item.type }}">{{ item.type.title() }}</span>
+    </div>
+
+    <div class="detail-grid">
+        <div class="detail-image">
+            {% if item.image %}
+                <img class="zoomable-image" src="{{ url_for('static', filename='uploads/' ~ item.image) }}" alt="{{ item.title }}" />
+                <p class="meta" style="margin-top:8px;">Click image to zoom</p>
+            {% else %}
+                <div class="placeholder">No Image</div>
+            {% endif %}
+        </div>
+
+        <div class="detail-info">
+            <p><strong>Description</strong></p>
+
+            {% if item.type == 'found' and current_user.id != item.owner.id %}
+                <p>Details hidden for security. Please claim to verify ownership.</p>
+                <p><strong>Color:</strong> Hidden</p>
+                <p><strong>Brand:</strong> Hidden</p>
+            {% else %}
+                <p>{{ item.description or 'No description provided.' }}</p>
+                <p><strong>Color:</strong> {{ item.color or 'N/A' }}</p>
+                <p><strong>Brand:</strong> {{ item.brand or 'N/A' }}</p>
+            {% endif %}
+
+            <p>
+                <strong>Status:</strong>
+                {% if item.status == 'claimed' %}
+                    <span class="status-badge status-claimed">🔵 Claimed</span>
+                {% elif item.status == 'closed' %}
+                    <span class="status-badge status-closed">🔴 Closed</span>
+                {% else %}
+                    <span class="status-badge status-active">🟢 Active</span>
+                {% endif %}
+            </p>
+            <p><strong>Posted by:</strong> {{ item.owner.name }}</p>
+
+            <!-- 🔐 CONTACT CONTROL -->
+            {% if item.type == 'lost' %}
+                <p><strong>Contact:</strong>
+                    <a href="mailto:{{ item.owner.email }}">{{ item.owner.email }}</a>
+                </p>
+            {% elif can_view_found_contact %}
+                <p><strong>Contact:</strong>
+                    <a href="mailto:{{ item.owner.email }}">{{ item.owner.email }}</a>
+                </p>
+            {% else %}
+                <p><strong>Contact:</strong> Hidden until claim approved 🔒</p>
+            {% endif %}
+
+            <p><strong>Posted on:</strong> {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+
+            <!-- ✅ CLAIM FORM (ONLY FOUND ITEMS) -->
+            {% if item.type == 'found' and current_user.is_authenticated and current_user.id != item.owner.id and item.status == 'active' and not user_claim %}
+            <hr>
+            <form method="POST" action="{{ url_for('items.claim_item', item_id=item.id) }}">
+                <input name="location" placeholder="Where did you lose it? (optional)" style="width:100%; padding:8px;"><br><br>
+                <input name="color" placeholder="What color is it? (optional)" style="width:100%; padding:8px;"><br><br>
+                <input name="brand" placeholder="Brand or model?" style="width:100%; padding:8px;"><br><br>
+                <textarea name="message" placeholder="Any unique mark or extra detail..." required style="width:100%; padding:8px;"></textarea>
+                <br><br>
+                <button type="submit">Claim This Item</button>
+            </form>
+            {% elif item.type == 'found' and current_user.id != item.owner.id and item.status == 'active' and user_claim %}
+            <p><strong>Your claim status:</strong> {{ user_claim.status.title() }}</p>
+            {% endif %}
+
+            <!-- ✅ MARK LOST ITEM AS FOUND -->
+            {% if item.type == 'lost' and current_user.id == item.owner.id and item.status != 'claimed' %}
+            <hr>
+            <a href="{{ url_for('items.mark_found', item_id=item.id) }}">
+                <button style="background:green;color:white;">Mark as Found</button>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ✅ CLAIM REQUESTS (ONLY FOR FOUND ITEMS OWNER) -->
+{% if item.type == 'found' and current_user.id == item.owner.id %}
+<div style="margin-top:20px;">
+    <h3>Claim Requests</h3>
+
+    {% for claim in item.claims %}
+        <div style="border:1px solid #ccc; padding:10px; margin:10px 0;">
+            <p><strong>{{ claim.user.name }}</strong></p>
+            <p><strong>Location:</strong> {{ claim.location }}</p>
+            <p><strong>Color:</strong> {{ claim.color }}</p>
+            <p><strong>Brand:</strong> {{ claim.brand }}</p>
+            <p><strong>Details:</strong> {{ claim.message }}</p>
+            <p>Status: {{ claim.status }}</p>
+
+            {% if claim.status == 'pending' %}
+                <div style="margin-top:12px; display:flex; gap:10px;">
+                    <a href="{{ url_for('items.approve_claim', claim_id=claim.id) }}"
+                       style="padding:8px 14px; background:#16a34a; color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">
+                        Approve
+                    </a>
+                    <a href="{{ url_for('items.reject_claim', claim_id=claim.id) }}"
+                       style="padding:8px 14px; background:#dc2626; color:#fff; border-radius:8px; text-decoration:none; font-weight:600;">
+                        Reject
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div id="imageZoomModal" class="image-modal" style="display:none;">
+    <span class="image-modal-close" id="imageZoomClose">&times;</span>
+    <img class="image-modal-content" id="imageZoomPreview" alt="Zoomed item image">
+</div>
+
+<script>
+    (function () {
+        const zoomableImage = document.querySelector('.zoomable-image');
+        const modal = document.getElementById('imageZoomModal');
+        const preview = document.getElementById('imageZoomPreview');
+        const closeBtn = document.getElementById('imageZoomClose');
+
+        if (!zoomableImage || !modal || !preview || !closeBtn) return;
+
+        zoomableImage.addEventListener('click', function () {
+            preview.src = zoomableImage.src;
+            modal.style.display = 'flex';
+        });
+
+        closeBtn.addEventListener('click', function () {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    })();
+</script>
+
+{% endblock %}
